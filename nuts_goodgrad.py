@@ -103,7 +103,7 @@ class NUTS:
         :return:
         """
 
-        # TODO: There is a problem in this function when evaluating n_alpha and alpha. Seems to get too big! Probably to do with misalignment of gradients.
+
         #theta0 = self.theta0
         f = self.logp
         delta_max = self.delta_max
@@ -229,6 +229,7 @@ class NUTS:
             else:
                 epsilon = np.exp(logeps_bar)
 
+
             if self.debug:
                 print(epsilon)
                 print("Epsilon for m = %d is %.4lf" % (m, epsilon[m]))
@@ -236,6 +237,8 @@ class NUTS:
 
             # add proposal to sample list
             self.samples[m, :] = theta_prop
+        # remove burnin
+        self.samples = self.samples[M_adapt:, :]
         print("Sampling finished!")
 
 
