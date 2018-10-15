@@ -1,0 +1,14 @@
+# Ignore pycache
+__pycache__/
+
+# Pycharm meta-data
+**/.idea/
+
+# Mac computers
+**/.DS_Store
+
+# Ignore compiled python files
+**/*.pyc
+
+# Ignore .vscode
+.vscode
