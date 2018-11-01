@@ -17,8 +17,8 @@ M_adapt = int(sys.argv[2])
 
 
 dim = 2
-num_tests=15
-np.random.seed(20)
+num_tests=20
+np.random.seed(50)
 A = wishart.rvs(df=dim, scale=np.eye(dim))
 # this means that the log-likelihood is proportional to -1/2 * theta^T A theta
 def logp(theta):
@@ -30,10 +30,10 @@ x1diff = []
 x2diff = []
 x1x2diff = []
 invA= np.linalg.inv(A)
-
+inc = 500
 init = np.random.multivariate_normal([0,0], cov=invA)
 for i in range(1, num_tests):
-    sampler = NUTS(logp, i*500, M_adapt, init, debug=False, delta=0.25)
+    sampler = NUTS(logp, i*inc, int(0.08*inc*i), init, debug=False, delta=0.65) # delta is set from paper
     sampler.sample()
     xp, yp = list(zip(*sampler.samples))
     cov_NUTS = np.cov(xp, yp)
@@ -45,11 +45,13 @@ for i in range(1, num_tests):
     x1x2diff.append(diff[0,1])
 
 print(invA)
-itsp = [i*1500 for i in range(num_tests-1)]
+itsp = [i*inc for i in range(num_tests-1)]
 
 plt.plot(itsp, x1diff, 'b*-', label="Variance of x1")
 plt.plot(itsp, x2diff, 'r*-', label="Variance of x2")
 plt.plot(itsp, x1x2diff, 'g*-', label="Cov x1 x2")
+plt.xlabel("Iterations run")
+plt.ylabel("Difference from theretical value")
 plt.plot(itsp, np.zeros_like(itsp), 'k--')
 plt.legend()
 plt.show()

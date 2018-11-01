@@ -1,8 +1,6 @@
 import numpy as np
 import tqdm
 
-
-
 class NUTS:
     """
     Implements the efficient NUTS sampler with dual averaging (algorithm 6) from Hoffman and Gelman (2011)
