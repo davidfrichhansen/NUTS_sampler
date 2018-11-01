@@ -219,7 +219,7 @@ class NUTS:
             # dual averaging
             if m <= M_adapt:
                 H_bar = (1 - 1.0 / (m + t0))*H_bar + 1 / (m+t0) * (self.delta - alpha / n_alpha)
-                print(n_alpha)
+                #print(n_alpha)
                 logeps = mu - np.sqrt(m) / gamma * H_bar
                 epsilon = np.exp(logeps)
                 logeps_bar = m**(-kappa) * logeps + (1-m**(-kappa))*logeps_bar

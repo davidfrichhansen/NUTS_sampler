@@ -19,7 +19,10 @@ M_adapt = int(sys.argv[2])
 dim = 2
 num_tests=20
 np.random.seed(50)
-A = wishart.rvs(df=dim, scale=np.eye(dim))
+#A = wishart.rvs(df=dim, scale=np.eye(dim))
+
+A = np.linalg.inv(np.array([[0.01, 0], [0, 0.01]]))
+
 # this means that the log-likelihood is proportional to -1/2 * theta^T A theta
 def logp(theta):
     logprob = -.5 * theta.T @ A @ theta
@@ -33,7 +36,7 @@ invA= np.linalg.inv(A)
 inc = 500
 init = np.random.multivariate_normal([0,0], cov=invA)
 for i in range(1, num_tests):
-    sampler = NUTS(logp, i*inc, int(0.08*inc*i), init, debug=False, delta=0.65) # delta is set from paper
+    sampler = NUTS(logp, i*inc, int(0.5*inc*i), init, debug=False, delta=0.65) # delta is set from paper
     sampler.sample()
     xp, yp = list(zip(*sampler.samples))
     cov_NUTS = np.cov(xp, yp)

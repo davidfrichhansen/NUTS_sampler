@@ -1,6 +1,8 @@
 import numpy as np
 import tqdm
 
+
+
 class NUTS:
     """
     Implements the efficient NUTS sampler with dual averaging (algorithm 6) from Hoffman and Gelman (2011)
@@ -152,8 +154,7 @@ class NUTS:
 
     def sample(self, kappa=0.75, t0=10):
         """
-        Run the NUTS sampling algorithm with dual averaging.
-        Does not return samples but saves them in member, self.samples
+        Run the NUTS sampling algorithm with dual averaging. Does not return samples but saves them in self.samples
         :param kappa    Parameter to be used in dual averaging
         :param t0       Initial value of t0 as described in paper
         :return:        Nothing
