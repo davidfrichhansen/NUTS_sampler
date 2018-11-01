@@ -34,30 +34,30 @@ class NUTS:
 
     def leapfrog(self, theta, r, epsilon, grad):
         """
-        Leapfrog integration
-        :param theta:   initial parameter value
-        :param r:       momentum parameter
-        :param epsilon: step length
-        :param f:       function returning log p and gradient
+        Performs leapfrog integration
+        :param theta:       Current position
+        :param r:           Current momentum
+        :param epsilon:     Step length
+        :param grad:        Gradient evaluated in theta
+        :return: new positition, new momentum, new gradient and new function value
         """
-        #if self.debug:
-        #    print("Enter leapfrog")
         f = self.logp
-        #_, grad = f(theta)
+
         r_bar = r + 0.5*epsilon*grad
         theta_bar = theta + epsilon*r_bar
         # recompute gradient
+
         logp_new, grad_new = f(theta_bar)
         r_bar = r_bar + 0.5*epsilon*grad_new
 
-        #if self.debug:
-        #    print("Leave leapfrog")
         return theta_bar, r_bar, grad_new, logp_new
 
     def epsilon_heuristic(self, theta, old_logp, old_grad):
         """
         Heuristic for finding initial value of step length epsilon
         :param theta:   Initial parameter value
+        :param old_logp f(theta)
+        :param old_grad gradient of f(theta)
         :return:        Reasonable value for initial epsilon
         """
         if self.debug:
@@ -65,11 +65,8 @@ class NUTS:
         dim = len(theta)
         epsilon = 1
         r = np.random.multivariate_normal(np.zeros((dim, )), np.eye(dim))
-        f = self.logp
         # initial leapfrog
-        #old_logp, old_grad = f(theta)
         _, r_prime, _, new_logp = self.leapfrog(theta, r, epsilon, old_grad)
-        #new_logp, _ = f(theta_prime)
         logp_ratio = new_logp - old_logp - 0.5*r_prime.T@r_prime + 0.5*r.T@r
 
         criteria = logp_ratio > np.log(.5)
@@ -79,7 +76,6 @@ class NUTS:
         while a*logp_ratio > -a*np.log(2.0):
             epsilon *= 2.0**a
             theta_prime, r_prime, _, new_logp = self.leapfrog(theta, r, epsilon, old_grad)
-            #new_logp, _ = f(theta_prime)
             logp_ratio = new_logp - old_logp - 0.5*r_prime.T@r_prime + 0.5*r.T@r
 
         # debugging
@@ -94,33 +90,29 @@ class NUTS:
         This is one of the main enhancements from regular HMC
         :param theta:       Latest parameter value
         :param r:           Latest momentum value
-        :param u:           Slice variable
+        :param log_u        log of slice variable
         :param v:           Direction (-1 or 1)
         :param j:           height of tree
         :param epsilon:     step length
         :param r0:          Initial momentum value
         :param old_logp:    self.f(theta0)
-        :return:
+        :param grad:        gradient of self.f(theta)
+        :return:            A bunch - TODO
         """
 
 
-        #theta0 = self.theta0
-        f = self.logp
         delta_max = self.delta_max
-        #old_logp, _ = f(theta0)
 
         if self.debug:
             print("Recursion, j = %d" % j)
 
         # base case - tree height is 0
         if j == 0:
-            #print("Base case")
-            theta_prime, r_prime, grad_new, new_logp = self.leapfrog(theta, r, v*epsilon, grad)
-            #new_logp, _ = f(theta_prime)
 
-            #n_prime = 1 if log_u < new_logp - 0.5 * r_prime.T @ r_prime else 0
-            n_prime = int(log_u <= (new_logp - 0.5 * r_prime.T @ r_prime))
-            #print(n_prime)
+            theta_prime, r_prime, grad_new, new_logp = self.leapfrog(theta, r, v*epsilon, grad)
+
+            n_prime = 1 if log_u < new_logp - 0.5 * r_prime.T @ r_prime else 0
+
             s_prime = 1 if log_u < delta_max + new_logp - 0.5 * r_prime.T @ r_prime else 0
 
             return (theta_prime, r_prime, theta_prime, r_prime, theta_prime, n_prime, s_prime,
@@ -131,7 +123,6 @@ class NUTS:
             (theta_m, r_m, theta_p, r_p,
             theta_prime, n_prime, s_prime, alpha_prime, n_alpha, grad_p, grad_m) = self.build_tree(theta, r, log_u, v, j-1, epsilon,
                                                                                    theta0, r0, old_logp, grad)
-            #print(s_prime)
             if s_prime == 1:
                 if v == -1:
                     (theta_m, r_m, _, _, theta_pp, n_pp,
@@ -143,14 +134,10 @@ class NUTS:
                                                                   old_logp, grad_p)
 
                 # draw bernoulli sample
-                #print("npp %d" % n_pp)
-                #bern = np.random.binomial(1, n_pp / max((n_prime + n_pp), 1))
                 try:
                     bern = np.random.rand() < n_pp / (n_prime + n_pp)
                 except ZeroDivisionError:
                     bern = False
-                #print(n_pp / max((n_prime + n_pp), 1))
-                #bern = np.random.binomial(1, n_pp / (n_prime + n_pp))
                 if bern:
                     theta_prime = theta_pp
                 alpha_prime += alpha_pp
@@ -167,9 +154,13 @@ class NUTS:
 
     def sample(self, kappa=0.75, t0=10):
         """
-        Run the NUTS sampling algorithm with dual averaging
-        :return:
+        Run the NUTS sampling algorithm with dual averaging.
+        Does not return samples but saves them in member, self.samples
+        :param kappa    Parameter to be used in dual averaging
+        :param t0       Initial value of t0 as described in paper
+        :return:        Nothing
         """
+        #np.random.seed(0)
         f = self.logp
         M = self.M
         M_adapt = self.M_adapt
