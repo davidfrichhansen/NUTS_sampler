@@ -6,6 +6,7 @@ import tqdm
 class NUTS:
     """
     Implements the efficient NUTS sampler with dual averaging (algorithm 6) from Hoffman and Gelman (2011)
+    TODO: Use Numba for likelihood!
     """
     def __init__(self, logp, M, M_adapt, theta0, delta=0.63, debug=False, delta_max=1000.0):
         """
@@ -75,12 +76,12 @@ class NUTS:
 
         while a*logp_ratio > -a*np.log(2.0):
             epsilon *= 2.0**a
-            theta_prime, r_prime, _, new_logp = self.leapfrog(theta, r, epsilon, old_grad)
+            _, r_prime, _, new_logp = self.leapfrog(theta, r, epsilon, old_grad)
             logp_ratio = new_logp - old_logp - 0.5*r_prime.T@r_prime + 0.5*r.T@r
 
         # debugging
-        if self.debug:
-            print("Find reasonable epsilon: %.4lf\n" % epsilon)
+       
+        print("Find reasonable epsilon: %.4lf\n" % epsilon)
 
         return epsilon
 
@@ -102,10 +103,6 @@ class NUTS:
 
 
         delta_max = self.delta_max
-
-        if self.debug:
-            print("Recursion, j = %d" % j)
-
         # base case - tree height is 0
         if j == 0:
 
@@ -117,20 +114,20 @@ class NUTS:
 
             return (theta_prime, r_prime, theta_prime, r_prime, theta_prime, n_prime, s_prime,
                     min(1, np.exp(new_logp - 0.5*r_prime.T@r_prime - old_logp + 0.5 * r0.T @ r0)),
-                    1, grad_new, grad_new)
+                    1, grad_new, grad_new, grad_new)
         else:
             # main recursion
             (theta_m, r_m, theta_p, r_p,
-            theta_prime, n_prime, s_prime, alpha_prime, n_alpha, grad_p, grad_m) = self.build_tree(theta, r, log_u, v, j-1, epsilon,
+            theta_prime, n_prime, s_prime, alpha_prime, n_alpha, grad_p, grad_m, grad_prime) = self.build_tree(theta, r, log_u, v, j-1, epsilon,
                                                                                    theta0, r0, old_logp, grad)
             if s_prime == 1:
                 if v == -1:
                     (theta_m, r_m, _, _, theta_pp, n_pp,
-                     s_pp, alpha_pp, n_alphapp, _, grad_m) = self.build_tree(theta_m, r_m, log_u, v, j-1, epsilon, theta0, r0,
+                     s_pp, alpha_pp, n_alphapp, _, grad_m, grad_pp) = self.build_tree(theta_m, r_m, log_u, v, j-1, epsilon, theta0, r0,
                                                                   old_logp, grad_m)
                 else:
                     (_,_, theta_p, r_p, theta_pp, n_pp,
-                     s_pp, alpha_pp, n_alphapp, grad_p, _) = self.build_tree(theta_p, r_p, log_u, v, j-1, epsilon,theta0,  r0,
+                     s_pp, alpha_pp, n_alphapp, grad_p, _, grad_pp) = self.build_tree(theta_p, r_p, log_u, v, j-1, epsilon,theta0,  r0,
                                                                   old_logp, grad_p)
 
                 # draw bernoulli sample
@@ -140,6 +137,8 @@ class NUTS:
                     bern = False
                 if bern:
                     theta_prime = theta_pp
+                    grad_prime = grad_pp
+
                 alpha_prime += alpha_pp
                 n_alpha += n_alphapp
 
@@ -150,7 +149,7 @@ class NUTS:
 
                 n_prime += n_pp
 
-            return theta_m, r_m, theta_p, r_p, theta_prime, n_prime, s_prime, alpha_prime, n_alpha, grad_p, grad_m
+            return theta_m, r_m, theta_p, r_p, theta_prime, n_prime, s_prime, alpha_prime, n_alpha, grad_p, grad_m, grad_prime
 
     def sample(self, kappa=0.75, t0=10):
         """
@@ -175,7 +174,7 @@ class NUTS:
             r0 = np.random.multivariate_normal(np.zeros_like(theta0), np.eye(len(theta0)))
             logp, grad = f(self.samples[m-1, :])
             joint = logp - 0.5*r0.T@r0
-            #u = np.random.uniform(0, np.exp(logp - 0.5*r0.T@r0))
+            #log_u = np.log(np.random.uniform(0, np.exp(logp - 0.5*r0.T@r0)))
             log_u = joint - np.random.exponential(1, size=1)
             # initialize
             theta_m = self.samples[m-1,:]
@@ -193,11 +192,11 @@ class NUTS:
                 v = np.random.choice([-1,1])
                 if v == -1:
                     (theta_m, r_m, _, _, theta_prime, n_prime,
-                     s_prime, alpha, n_alpha, _, grad_m) = self.build_tree(theta_m, r_m, log_u, v, j, epsilon,
+                     s_prime, alpha, n_alpha, _, grad_m, grad_prime) = self.build_tree(theta_m, r_m, log_u, v, j, epsilon,
                                                                 self.samples[m-1,:], r0, logp, grad_m)
                 else:
                     (_, _, theta_p, r_p, theta_prime, n_prime,
-                     s_prime, alpha, n_alpha, grad_p, _) = self.build_tree(theta_p, r_p, log_u, v, j, epsilon,
+                     s_prime, alpha, n_alpha, grad_p, _, grad_prime) = self.build_tree(theta_p, r_p, log_u, v, j, epsilon,
                                                                 self.samples[m-1,:], r0, logp, grad_p)
                 if s_prime:
                     # accept sample
@@ -205,6 +204,7 @@ class NUTS:
                     bern = np.random.rand() < min(1, n_prime / n)
                     if bern:
                         theta_prop = theta_prime
+                        grad = grad_prime
 
                 n += n_prime
                 s = s_prime if (theta_p - theta_m) @ r_m >= 0 and (theta_p - theta_m) @ r_p >= 0 else 0
@@ -222,11 +222,10 @@ class NUTS:
 
             if self.debug:
                 print(epsilon)
-                print("Epsilon for m = %d is %.4lf" % (m, epsilon[m]))
-
 
             # add proposal to sample list
             self.samples[m, :] = theta_prop
+        print("Epsilon was %lf" % epsilon)
         # remove burnin
         self.samples = self.samples[M_adapt:, :]
         print("Sampling finished!")
