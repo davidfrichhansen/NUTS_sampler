@@ -229,20 +229,6 @@ class NUTS:
         # remove burnin
         self.samples = self.samples[M_adapt:, :]
         print("Sampling finished!")
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+        print()
+        print()
 
