@@ -64,8 +64,11 @@ class NUTS:
         if self.debug:
             print("Enter reasonable epsilon")
         dim = len(theta)
+       # print("Dim in eps heu %d" % dim)
         epsilon = 1
-        r = np.random.multivariate_normal(np.zeros((dim, )), np.eye(dim))
+        #print("Hej1")
+        #r = np.random.multivariate_normal(np.zeros((dim, )), np.eye(dim))
+        r = np.random.randn(dim)
         # initial leapfrog
         _, r_prime, _, new_logp = self.leapfrog(theta, r, epsilon, old_grad)
         logp_ratio = new_logp - old_logp - 0.5*r_prime.T@r_prime + 0.5*r.T@r
@@ -75,6 +78,7 @@ class NUTS:
         a = 1.0 if criteria else -1.0
 
         while a*logp_ratio > -a*np.log(2.0):
+            print("hej a %.2f" % a)
             epsilon *= 2.0**a
             _, r_prime, _, new_logp = self.leapfrog(theta, r, epsilon, old_grad)
             logp_ratio = new_logp - old_logp - 0.5*r_prime.T@r_prime + 0.5*r.T@r
@@ -168,8 +172,10 @@ class NUTS:
         H_bar = 0
         gamma = 0.05
         for m in tqdm.trange(1,M, unit_scale=True, desc="Sample"):
+            #print("m = %d" % m)
             # tqdm.trange is a specialised instance of range that is optimised for progess bar output
-            r0 = np.random.multivariate_normal(np.zeros_like(theta0), np.eye(len(theta0)))
+            #r0 = np.random.multivariate_normal(np.zeros_like(theta0), np.eye(len(theta0)))
+            r0 = np.random.randn(len(theta0))
             logp, grad = f(self.samples[m-1, :])
             joint = logp - 0.5*r0.T@r0
             #log_u = np.log(np.random.uniform(0, np.exp(logp - 0.5*r0.T@r0)))

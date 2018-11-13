@@ -1,7 +1,7 @@
 import numpy as np
 from scipy.special import erf, erfinv 
 from numpy.matlib import repmat, repeat
-
+from numba import jit
 
 ########################
 #### LINK FUNCTIONS ####
@@ -44,6 +44,10 @@ def get_2d_exp_kernel(beta, shape_plate):
 
     return final
 
+def rbf(beta, i, j):
+    return np.exp(- ((i - j) ** 2 / (beta ** 2)))
+
+
 
 def calcDistanceMatrixFastEuclidean(points):
     """
@@ -61,13 +65,14 @@ def calcDistanceMatrixFastEuclidean(points):
 ########################3
 #### Log likelihood ####
 ########################
-
+@jit(nopython=False)
 def loglik(etadelta, sigma, X, linkD, linkH, M, cholD, cholH, *linkArgs):
     # linkD and linkH should be callable and return f^-1(h) and f^-1(d) resp.
     # furthermore it should return the derivative of these!
     # linkArgs is a nested list where the first list is a list of extra args to linkD
     # and second list is a list of extra args to linkD
-
+    
+    K, L = X.shape
     eta = etadelta[:M*L]
     delta = etadelta[M*L:]
 
