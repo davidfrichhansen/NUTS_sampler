@@ -58,7 +58,7 @@ def calcDistanceMatrixFastEuclidean(points):
     distMat = np.sqrt(np.sum((repmat(points, numPoints, 1) - repeat(points, numPoints, axis=0))**2, axis=1))
     return distMat.reshape((numPoints,numPoints))
 
-########################
+########################3
 #### Log likelihood ####
 ########################
 

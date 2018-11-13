@@ -79,8 +79,6 @@ class NUTS:
             _, r_prime, _, new_logp = self.leapfrog(theta, r, epsilon, old_grad)
             logp_ratio = new_logp - old_logp - 0.5*r_prime.T@r_prime + 0.5*r.T@r
 
-        # debugging
-       
         print("Find reasonable epsilon: %.4lf\n" % epsilon)
 
         return epsilon
