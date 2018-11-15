@@ -78,7 +78,6 @@ class NUTS:
         a = 1.0 if criteria else -1.0
 
         while a*logp_ratio > -a*np.log(2.0):
-            print("hej a %.2f" % a)
             epsilon *= 2.0**a
             _, r_prime, _, new_logp = self.leapfrog(theta, r, epsilon, old_grad)
             logp_ratio = new_logp - old_logp - 0.5*r_prime.T@r_prime + 0.5*r.T@r
@@ -140,7 +139,7 @@ class NUTS:
                 if bern:
                     theta_prime = theta_pp
                     grad_prime = grad_pp
-
+                    
                 alpha_prime += alpha_pp
                 n_alpha += n_alphapp
 
@@ -207,6 +206,7 @@ class NUTS:
                     #bern = np.random.binomial(1, min(1, n_prime / n))
                     bern = np.random.rand() < min(1, n_prime / n)
                     if bern:
+                        #print("Accept!")
                         theta_prop = theta_prime
                         grad = grad_prime
 
@@ -217,12 +217,16 @@ class NUTS:
             # dual averaging
             if m <= M_adapt:
                 H_bar = (1 - 1.0 / (m + t0))*H_bar + 1 / (m+t0) * (self.delta - alpha / n_alpha)
+                #print(alpha / n_alpha)
+                #print(H_bar)
                 logeps = mu - np.sqrt(m) / gamma * H_bar
+                #print(mu)
                 epsilon = np.exp(logeps)
                 logeps_bar = m**(-kappa) * logeps + (1-m**(-kappa))*logeps_bar
+                if m % 100 == 0:
+                    print("epsilon = %f" % epsilon)
             else:
                 epsilon = np.exp(logeps_bar)
-
 
             if self.debug:
                 print(epsilon)

@@ -62,10 +62,10 @@ def calcDistanceMatrixFastEuclidean(points):
     distMat = np.sqrt(np.sum((repmat(points, numPoints, 1) - repeat(points, numPoints, axis=0))**2, axis=1))
     return distMat.reshape((numPoints,numPoints))
 
-########################3
+########################
 #### Log likelihood ####
 ########################
-@jit(nopython=False)
+#@jit(nopython=False)
 def loglik(etadelta, sigma, X, linkD, linkH, M, cholD, cholH, *linkArgs):
     # linkD and linkH should be callable and return f^-1(h) and f^-1(d) resp.
     # furthermore it should return the derivative of these!
@@ -75,6 +75,7 @@ def loglik(etadelta, sigma, X, linkD, linkH, M, cholD, cholH, *linkArgs):
     K, L = X.shape
     eta = etadelta[:M*L]
     delta = etadelta[M*L:]
+
 
 
     # convert 'greeks' to matrices D and H - eq. (17)
@@ -98,6 +99,7 @@ def loglik(etadelta, sigma, X, linkD, linkH, M, cholD, cholH, *linkArgs):
     inner2 = ((H @ (X_re - X).T) * D_prime.reshape(M, K))
     grad2 = sigma ** (-2) * (inner2 @ cholD).ravel() + delta
     grad = np.concatenate((grad1, grad2), axis=0)
+    #print(grad.shape)
     return cost_val, grad
 
 
