@@ -1,7 +1,6 @@
 import numpy as np
 from nuts_goodgrad import NUTS
 import aux_funcs as fs
-from scipy.special import erf, erfinv
 from scipy.io import loadmat
 import time
 import matplotlib.pyplot as plt
@@ -26,7 +25,7 @@ if __name__ == "__main__":
     # delete objects from memory
     del mat1, mat2
     """
-    mat = loadmat('./data/sampling.mat')
+    mat = loadmat('./data/newdata.mat')
     X = mat['X']
     K, L = X.shape
     print("Shape of data is (%d, %d)" % (K,L))
@@ -34,8 +33,8 @@ if __name__ == "__main__":
     # setup covariances
     print("\n\nSetting up covariances")
     M = 2
-    beta_H = 2.5
-    beta_D = 2.5
+    beta_H = 8
+    beta_D = 6
     sigma_N = 5
     
     dim = int(np.sqrt(len(X)))
@@ -54,32 +53,44 @@ if __name__ == "__main__":
         print("Plotting covariance of D\n")
         plt.imshow(cov_D_2d)
         plt.show()
+        plt.imshow(cov_H)
+        plt.show()
 
     print("Doing additional setup")
     loglik = fs.loglik
     delta = np.random.randn(M*K)
     eta = np.random.randn(M*L)
+
     etadelta = np.concatenate((eta, delta), axis=0)
     cholD = np.linalg.cholesky(cov_D_2d)
     cholH = np.linalg.cholesky(cov_H)
     # 'wrapper' - may be inefficient
+    #### This may be wrong. Something with sign and step size determination doesn't converge!!!
     def loglik_w(etadelta):
-        return list(map(lambda x : -x, loglik(etadelta, sigma_N, X, fs.link_rectgauss, fs.link_exp_to_gauss,M,cholD, cholH,
-                      (np.diag(cov_D_2d), 1), (np.diag(cov_H), 1))))
-                      
+        #return list(map(lambda x : -x, loglik(etadelta, sigma_N, X, fs.link_rectgauss, fs.link_exp_to_gauss,M,cholD, cholH,
+        #              (np.diag(cov_D_2d), 1), (np.diag(cov_H), 1))))
+        #return loglik(etadelta, sigma_N, X, fs.link_rectgauss, fs.link_exp_to_gauss,M,cholD, cholH,
+        #             (np.diag(cov_D_2d), 1), (np.diag(cov_H), 1))
+        return loglik(etadelta, sigma_N, X, fs.link_rectgauss, fs.link_exp_to_gauss, M, cholD, cholH,
+                      (1, 1), (1, 1))
+
+
     print("Done with additional setup after %f s!\n" % (time.time() - t0))
     
     
-    num_samples = 5000
-    num_burnin = int(0.2*num_samples)
-    #num_burnin = 4900
+    num_samples = 3000
+    #num_burnin = int(0.2*num_samples)
+    num_burnin = 1500
     print("Setting up sampler wíth %d samples and %d adaptive\n" % (num_samples, num_burnin))
-    sampler = NUTS(loglik_w, num_samples, num_burnin, etadelta, delta=0.8)
+    sampler = NUTS(loglik_w, num_samples, num_burnin, etadelta, delta=0.6)
     print("Beginning sampling")
     sampler.sample()
     print("Done sampling after %f s!\n" % (time.time() - t0))
-    out_filename = input("Please input filename for saving\n")
-    out_path = out_filename
+    #out_filename = input("Please input filename for saving\n")
+    #out_path = out_filename
+    print(sampler.accepted / sampler.M)
+    out_path = input("Enter filename:")
     print("\nSaving into %s" % out_path)
-    np.save(out_filename, sampler.samples)
+    np.save(out_path, sampler.samples)
+    np.save(out_path + "logp_trace", sampler.logparr)
     print("Finished in %f s!" % (time.time() - t0))

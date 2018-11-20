@@ -14,6 +14,7 @@ def link_exp_to_gauss(h, pars):
     inner = .5 - .5*erf(h / (np.sqrt(2) * sigma)) + 1e-12
     val = np.maximum(-1 / lamb * np.log(inner), 0)
     val = np.nan_to_num(val)
+    #print(np.sum(np.isnan(val)))
     # elementwise derivative of inverse link
     grad = (np.sqrt(2 * np.pi) * sigma * lamb) ** (-1) * np.exp(lamb * val - h ** 2 / (2 * sigma ** 2))
     return val, grad
@@ -100,6 +101,6 @@ def loglik(etadelta, sigma, X, linkD, linkH, M, cholD, cholH, *linkArgs):
     grad2 = sigma ** (-2) * (inner2 @ cholD).ravel() + delta
     grad = np.concatenate((grad1, grad2), axis=0)
     #print(grad.shape)
-    return cost_val, grad
+    return -cost_val, -grad
 
 

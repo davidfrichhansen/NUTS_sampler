@@ -22,12 +22,14 @@ class NUTS:
         :param delta_max:   Parameter determining precision. Default: 1000 as recommended by Hoffman and Gelman
         """
         self.logp = logp
+        self.logparr = np.zeros((M,))
         self.M = M
         self.M_adapt = M_adapt
         self.theta0 = theta0
         self.delta = delta
         self.debug = debug
         self.delta_max = delta_max
+        self.accepted = 0
 
         # maybe do some smart stuff, pickling, sqlite etc.
         self.samples = np.zeros((M, len(theta0)))
@@ -66,8 +68,6 @@ class NUTS:
         dim = len(theta)
        # print("Dim in eps heu %d" % dim)
         epsilon = 1
-        #print("Hej1")
-        #r = np.random.multivariate_normal(np.zeros((dim, )), np.eye(dim))
         r = np.random.randn(dim)
         # initial leapfrog
         _, r_prime, _, new_logp = self.leapfrog(theta, r, epsilon, old_grad)
@@ -171,6 +171,8 @@ class NUTS:
         H_bar = 0
         gamma = 0.05
         for m in tqdm.trange(1,M, unit_scale=True, desc="Sample"):
+            if m % 100 == 0:
+                print("likelihood : %f" % logp)
             #print("m = %d" % m)
             # tqdm.trange is a specialised instance of range that is optimised for progess bar output
             #r0 = np.random.multivariate_normal(np.zeros_like(theta0), np.eye(len(theta0)))
@@ -225,6 +227,7 @@ class NUTS:
                 logeps_bar = m**(-kappa) * logeps + (1-m**(-kappa))*logeps_bar
                 if m % 100 == 0:
                     print("epsilon = %f" % epsilon)
+                    print("H_bar = %f" % H_bar)
             else:
                 epsilon = np.exp(logeps_bar)
 
@@ -233,6 +236,7 @@ class NUTS:
 
             # add proposal to sample list
             self.samples[m, :] = theta_prop
+            self.logparr[m] = logp
         print("Epsilon was %lf" % epsilon)
         # remove burnin
         self.samples = self.samples[M_adapt:, :]
