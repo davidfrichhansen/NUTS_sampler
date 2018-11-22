@@ -11,12 +11,16 @@ def link_exp_to_gauss(h, pars):
     sigma = pars[0]
     lamb = pars[1]  # inverse scale
     # actual inverse link value
-    inner = .5 - .5*erf(h / (np.sqrt(2) * sigma)) + 1e-12
-    val = np.maximum(-1 / lamb * np.log(inner), 0)
+    inner = 1e-12 + .5 - .5*erf(h / (np.sqrt(2) * sigma))
+    #print(inner)
+    val = np.maximum((-1.0 / lamb) * np.log(inner), 0)
     val = np.nan_to_num(val)
     #print(np.sum(np.isnan(val)))
     # elementwise derivative of inverse link
-    grad = (np.sqrt(2 * np.pi) * sigma * lamb) ** (-1) * np.exp(lamb * val - h ** 2 / (2 * sigma ** 2))
+    #grad = (np.sqrt(2 * np.pi) * sigma * lamb) ** (-1) * np.exp(lamb * val - h ** 2 / (2 * sigma ** 2))
+    #tmp = 1e-12 + np.exp(-(h**2) / (2*sigma**2))
+    #grad = 1.0 / (sigma*lamb*np.sqrt(2*np.pi)) * (tmp /inner)
+    grad = 1 / (np.sqrt(2*np.pi) * sigma * lamb) * np.exp(lamb*val - h*h / (2*sigma*sigma))
     return val, grad
 
 
@@ -28,7 +32,7 @@ def link_rectgauss(h, pars):
     val = np.sqrt(2) * s * erfinv(inner)
 
     # elementwise derivative of inverse link
-    grad = s / (2 * sigma) * np.exp(val ** 2 / (2 * s ** 2) - h ** 2 / (2 * sigma ** 2))
+    grad = (s / (2 * sigma)) * np.exp(val ** 2 / (2 * s * s) - h ** 2 / (2 * sigma ** 2))
 
     return val, grad
 
@@ -87,6 +91,8 @@ def loglik(etadelta, sigma, X, linkD, linkH, M, cholD, cholH, *linkArgs):
     H_args = linkArgs[1]
     # link_exp_to_gauss
     H, H_prime = linkH((eta.reshape(M, L) @ cholH.T), H_args)
+    if np.isnan(H_prime).any():
+        print("Nan found")
 
     # cost itself - eq. (22)
     first = sigma ** (-2) * np.sum(np.sum((X - D.T @ H) * (X - D.T @ H)))
@@ -94,13 +100,14 @@ def loglik(etadelta, sigma, X, linkD, linkH, M, cholD, cholH, *linkArgs):
     cost_val = .5 * (first + second)
 
     X_re = D.T @ H
+
     # gradient of cost - eq. (23)
     inner1 = ((D @ (X_re - X)) * H_prime.reshape(M, L))
     grad1 = sigma ** (-2) * (inner1 @ cholH).ravel() + eta
+
     inner2 = ((H @ (X_re - X).T) * D_prime.reshape(M, K))
     grad2 = sigma ** (-2) * (inner2 @ cholD).ravel() + delta
     grad = np.concatenate((grad1, grad2), axis=0)
-    #print(grad.shape)
     return -cost_val, -grad
 
 

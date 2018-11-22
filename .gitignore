@@ -12,3 +12,6 @@ __pycache__/
 
 # Ignore .vscode
 .vscode
+
+# ignore saved numpy
+*.npy

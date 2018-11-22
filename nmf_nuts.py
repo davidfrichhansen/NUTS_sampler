@@ -4,6 +4,7 @@ import aux_funcs as fs
 from scipy.io import loadmat
 import time
 import matplotlib.pyplot as plt
+#np.seterr('raise')
 
 
 if __name__ == "__main__":
@@ -33,8 +34,8 @@ if __name__ == "__main__":
     # setup covariances
     print("\n\nSetting up covariances")
     M = 2
-    beta_H = 8
-    beta_D = 6
+    beta_H = 2.5
+    beta_D = 2.5
     sigma_N = 5
     
     dim = int(np.sqrt(len(X)))
@@ -58,8 +59,12 @@ if __name__ == "__main__":
 
     print("Doing additional setup")
     loglik = fs.loglik
-    delta = np.random.randn(M*K)
+
     eta = np.random.randn(M*L)
+    delta = np.random.randn(M * K)
+
+    #eta = np.zeros(M*L) + 0.2
+    #delta = np.zeros(M*K) + 0.24
 
     etadelta = np.concatenate((eta, delta), axis=0)
     cholD = np.linalg.cholesky(cov_D_2d)
@@ -67,10 +72,6 @@ if __name__ == "__main__":
     # 'wrapper' - may be inefficient
     #### This may be wrong. Something with sign and step size determination doesn't converge!!!
     def loglik_w(etadelta):
-        #return list(map(lambda x : -x, loglik(etadelta, sigma_N, X, fs.link_rectgauss, fs.link_exp_to_gauss,M,cholD, cholH,
-        #              (np.diag(cov_D_2d), 1), (np.diag(cov_H), 1))))
-        #return loglik(etadelta, sigma_N, X, fs.link_rectgauss, fs.link_exp_to_gauss,M,cholD, cholH,
-        #             (np.diag(cov_D_2d), 1), (np.diag(cov_H), 1))
         return loglik(etadelta, sigma_N, X, fs.link_rectgauss, fs.link_exp_to_gauss, M, cholD, cholH,
                       (1, 1), (1, 1))
 
@@ -88,7 +89,7 @@ if __name__ == "__main__":
     print("Done sampling after %f s!\n" % (time.time() - t0))
     #out_filename = input("Please input filename for saving\n")
     #out_path = out_filename
-    print(sampler.accepted / sampler.M)
+
     out_path = input("Enter filename:")
     print("\nSaving into %s" % out_path)
     np.save(out_path, sampler.samples)
