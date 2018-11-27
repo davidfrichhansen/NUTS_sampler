@@ -1,6 +1,5 @@
 import numpy as np
-from scipy.special import erf, erfinv
-from scipy.spatial.distance import euclidean
+from scipy.special import erf, erfinv 
 from numpy.matlib import repmat, repeat
 import matplotlib.pyplot as plt
 
@@ -73,6 +72,7 @@ def rbf(beta, i, j):
     return np.exp(- ((i - j) ** 2 / (beta ** 2)))
 
 
+
 def calcDistanceMatrixFastEuclidean(points):
     """
     Just a memory efficient way to calculate euclidian distances
@@ -92,8 +92,34 @@ def calcDistanceMatrixFastEuclidean(points):
 def loglik(etadelta, X, M, linkD, linkH, cholD, cholH, sigma):
 
     K,L = X.shape
-    eta = etadelta
 
+    eta = etadelta[:M*L]
+    delta = etadelta[M*L:]
+    print(delta.shape)
+
+    D_args = (1,1)
+    # link_rectgauss
+    D, D_prime = linkD((delta.reshape(M, K) @ cholD.T), D_args)
+
+    H_args = (1,1)
+    # link_exp_to_gauss
+    H, H_prime = linkH((eta.reshape(M, L) @ cholH.T), H_args)
+
+    # cost itself - eq. (22)
+    first = sigma ** (-2) * np.sum(np.sum((X - D.T @ H) * (X - D.T @ H)))
+    second = (delta.T @ delta) + (eta.T @ eta)
+    cost_val = .5 * (first + second)
+
+    X_re = D.T @ H
+    plt.matshow(X_re)
+    plt.axis('tight')
+    plt.show()
+    # gradient of cost - eq. (23)
+    inner1 = ((D @ (X_re - X)) * H_prime.reshape(M, L))
+    grad1 = sigma ** (-2) * (inner1 @ cholH).ravel() + eta
+    inner2 = ((H @ (X_re - X).T) * D_prime.reshape(M, K))
+    grad2 = sigma ** (-2) * (inner2 @ cholD).ravel() + delta
+    return -cost_val, -np.concatenate((grad1,grad2))
 
 
 

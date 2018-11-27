@@ -18,7 +18,7 @@ print(X.shape)
 
 K, L = X.shape
 # traces
-samples = np.load('newstart.npy')
+samples = np.load('rightstart.npy')
 
 dim = int(np.sqrt(len(X)))
 cov_D_2d = get_2d_exp_kernel(2.5, (dim, dim))
@@ -74,10 +74,12 @@ H_space_samples_re = H_space_samples.reshape((1500,2,50))
 D_space_samples_re = D_space_samples.reshape(1500,2,625)
 H_try = H_space_samples_re[1400,:,:]
 D_try = D_space_samples_re[1400,:,:]
+plt.plot(H_space_samples_re[1400, 1, :])
+plt.show()
 X_re = D_try.T@H_try
 
-print(X_re.shape)
-plt.matshow(X_re)
+print(X.shape)
+plt.matshow(X)
 plt.axis('tight')
 plt.show()
 
