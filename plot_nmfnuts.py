@@ -1,15 +1,17 @@
 import numpy as np
 from scipy.io import loadmat
 import matplotlib.pyplot as plt
-from aux_funcs import link_rectgauss, link_exp_to_gauss, loglik, get_2d_exp_kernel, rbf
-from scipy.spatial.distance import euclidean
+from aux_funcs import link_rectgauss, link_exp_to_gauss, get_2d_exp_kernel, rbf
 
-# dimensions
 
-mat = loadmat('./data/newdata.mat')
+
+
+### LOAD DATA
+mat = loadmat('./data/K1_25x25x50_2hot.mat')
 a = mat['a']
 vp = mat['vp']
 X = mat['X']
+loading = mat['gendata']['A'].ravel()[0].ravel()
 print(X.shape)
 
 K, L = X.shape
@@ -20,207 +22,149 @@ nr_H = L*M
 print(nr_D)
 print(nr_H)
 sigma_N = 5
-beta_D = 2.5*10
-beta_H = 2.5*10
 
-# traces
-samples = np.load('smooth_prior.npy')
+
+### LOAD SAMPLES
+samples = np.load('npys/K1_2hot/K1_25x25x50_2hot_smooth.npy')
+maps = np.load("npys/K1_2hot/K1_25x25x50_2hot_smooth_map.npz")
+D_map = maps['D_map']
+H_map = maps['H_map']
+cholH = maps['cholH']
+cholD = maps['cholD']
 print("Sample shape")
 print(samples.shape)
 
+num_samples = samples.shape[0]
+
+### SETUP COVARIANCES
 dim = int(np.sqrt(len(X)))
-cov_D_2d = get_2d_exp_kernel(beta_D, (dim, dim))
-cov_D_2d = cov_D_2d + 1e-5 * np.eye(K)
-
-cov_H = np.zeros((L, L))
-for i in range(L):
-    for j in range(L):
-        cov_H[i, j] = rbf(beta_H, i + 1, j + 1)
-
-cov_H = cov_H + 1e-5 * np.eye(L)
-
-cholD = np.linalg.cholesky(cov_D_2d)
-cholH = np.linalg.cholesky(cov_H)
 
 print(samples.shape)
-eta = samples[:, :nr_H]
-delta = samples[:, nr_H:]
+#eta = samples[:, :nr_H]
+#delta = samples[:, nr_H:]
+delta = samples[:,:M*K]
+eta = samples[:,M*K:]
 print("Shape eta")
 print(eta.shape)
 print("Shape delta")
 print(delta.shape)
 
+### TRANSFORM SAMPLES TO RIGHT SPACE
 # get H with link_exp_to_gauss
-H_space_samples = np.zeros((M,L,samples.shape[0]))
-D_space_samples = np.zeros((M,K, samples.shape[0]))
+H_samples = np.zeros((M,L,num_samples))
+D_samples = np.zeros((M,K, num_samples))
 
 for i in range(samples.shape[0]):
-    H_space_samples[:,:,i] = link_exp_to_gauss((eta[i,:].reshape(M,L))@cholH.T, pars=[1,1])[0]
-    D_space_samples[:,:,i] = link_exp_to_gauss((delta[i,:].reshape(M,K))@cholD.T, pars=[1,1])[0]
+    H_samples[:,:,i] = link_exp_to_gauss((eta[i,:].reshape(M,L))@cholH.T, pars=[1,1])[0]
+    D_samples[:,:,i] = link_exp_to_gauss((delta[i,:].reshape(M,K))@cholD.T, pars=[1,1])[0]
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    #_, grad = loglik(samples[i,:], sigma_N, X, link_rectgauss, link_exp_to_gauss, M, cholD, cholH)
-    #gradnorms[i] = np.linalg.norm(grad, 'inf')
-    #gradnorms[i] = np.amax(np.abs(grad))
-
-"""
-plt.plot(gradnorms)
-plt.show()
-maxdist = 0
-dists = np.zeros(samples.shape[0])
-for i in range(1,samples.shape[0]):
-    cur_sample = samples[i,:]
-    dist = euclidean(cur_sample, samples[0,:])
-    if dist > maxdist:
-        maxdist = dist
-        print(maxdist)
-    dists[i] = dist
-
-plt.plot(dists)
-plt.show()
-
-H_space_samples_re = H_space_samples.reshape((eta.shape[0],M,nr_H // M))
-D_space_samples_re = D_space_samples.reshape(delta.shape[0],M,nr_D // M)
-H_try = H_space_samples_re[eta.shape[0] - 100,:,:]
-D_try = D_space_samples_re[eta.shape[0] - 100,:,:]
-plt.plot(H_space_samples_re[eta.shape[0] - 100, 1, :])
-plt.show()
-X_re = D_try.T@H_try
-
-print(X.shape)
-plt.matshow(X)
-plt.axis('tight')
-plt.show()
-
-#plt.plot(H_space_samples[1400, 1, :])
-#plt.show()
-plt.matshow(H_space_samples)
-plt.axis('tight')
-plt.show()
-#plt.plot(H_space_samples[7500, :, 0])
-#plt.show()
-#plt.matshow(D_space_samples)
-#plt.axis('tight')
-#plt.show()
-#plt.plot(D_space_samples[7500, :])
-#plt.show()
-
-#plt.plot(H_space_samples[2500,:].reshape(50,2)[:,0], 'b-')
-#plt.show()
-
-
-
-
-
-# Mean and standard deviation
-D_mean = np.mean(delta, axis=0).reshape(M, int(nr_D / M))
-H_mean = np.mean(eta, axis=0).reshape(M, int(nr_H / M))
-
-D_sd = np.std(delta, axis=0)
-H_sd = np.std(eta, axis=0)
-print(D_sd.shape)
-D_sd = D_sd.reshape(M, int(nr_D / M))
-H_sd = H_sd.reshape(M, int(nr_H / M))
-
-# Confidence intervals in original domain
-H_li = np.zeros(H_mean.shape)
-H_ui = np.zeros(H_mean.shape)
-H_m = np.zeros(H_mean.shape)
-D_li = np.zeros(D_mean.shape)
-D_ui = np.zeros(D_mean.shape)
-D_m = np.zeros(D_mean.shape)
-
-for i in range(M):
-    H_li[i, :] = link_exp_to_gauss(H_mean[i, :] - 2 * H_sd[i, :], pars=[1, 1])[0]
-    H_ui[i, :] = link_exp_to_gauss(H_mean[i, :] + 2 * H_sd[i, :], pars=[1, 1])[0]
-    H_m[i, :] = link_exp_to_gauss(H_mean[i, :], pars=[1, 1])[0]
-    D_m[i,:] = link_rectgauss(D_mean[i, :], pars=[1, 1])[0]
-
-
-
-# True spectrum
-spectra = a.T @ vp
-
-# Plots
-plt.figure()
+### PLOT MAP ESTIMATE AND TRUE SPECTRUM (ie. H)
 plt.subplot(2,1,1)
-plt.plot(spectra[0,:], color='green')
-#plt.gca().axes.get_yaxis().set_visible(False)
-plt.legend(["True Spectrum"], loc = 2)
+plt.plot(H_map[0,:])
+plt.title('First component of H MAP')
+
 plt.subplot(2,1,2)
-#plt.fill_between(np.arange(len(H_mean[0,:])), H_li[0,:], H_ui[0,:],color='blue', alpha=.5)
-plt.plot(D_m[1, :], color='blue')
-#plt.gca().axes.get_yaxis().set_visible(False)
-plt.legend(["Mean","95% Confidence Int."], loc = 2)
+plt.plot((a.T@vp).ravel())
+plt.title('True spectrum')
+
+plt.tight_layout()
+
 plt.show()
 
 
-"""
+### PLOT HOTSPOT MAP AND TRUE HOTSPOT (ie. D)
+plt.subplot(1,2,1)
+plt.imshow(D_map[0,:].reshape(dim,dim))
+plt.title("D MAP")
+
+plt.subplot(1,2,2)
+plt.imshow(loading.reshape(dim,dim))
+plt.title('True loading')
+
+plt.tight_layout()
+
+plt.show()
+
+
+### PLOT 4 EVENLY SPACED SAMPLES OF H WITH MAP ESTIMATE
+
+H_plots = H_samples[:,:,-100::100 // 4]
+legend_names = ['First','Second','Third','Fourth','Fifth']
+colornames = ['g','r','c','m','k']
+plt.subplot(1,2,1)
+plt.title("Map estimate and one component")
+# plot MAP
+plt.plot(H_map[0,:], label='MAP')
+plt.xlabel("Index")
+plt.ylabel("Intensity")
+for i in range(4):
+    plt.plot(H_plots[0,:,i],c=colornames[i], label=legend_names[i])
+plt.legend()
+plt.subplot(1,2,2)
+plt.xlabel("Index")
+plt.ylabel("Intensity")
+plt.plot(H_map[1,:], label='MAP')
+plt.title("Map estimate and one component")
+for i in range(4):
+    plt.plot(H_plots[1,:,i], c=colornames[i], label=legend_names[i])
+plt.legend()
+
+plt.tight_layout()
+plt.show()
 
 
 
+### PLOT 4 EXAMPLES OF D WITH MAP ESTIMATE
+D_plots = D_samples[:,:,-100::100//4]
+
+ax1 = plt.subplot2grid((4,4),(1,0), rowspan=2,colspan=2)
+plt.imshow(D_map[0,:].reshape(dim,dim))
+plt.title('MAP estimate')
+plt.axis('tight')
 
 
+ax2 = plt.subplot2grid((4,4), (1,2))
+plt.imshow(D_plots[0,:,0].reshape(dim,dim))
+plt.axis('tight')
+
+ax3 = plt.subplot2grid((4,4), (1,3))
+plt.imshow(D_plots[0,:,1].reshape(dim,dim))
+plt.axis('tight')
+
+ax4 = plt.subplot2grid((4,4), (2,2))
+plt.imshow(D_plots[0,:,2].reshape(dim,dim))
+plt.axis('tight')
+
+ax5 = plt.subplot2grid((4,4), (2,3))
+plt.imshow(D_plots[0,:,3].reshape(dim,dim))
+plt.axis('tight')
+
+plt.tight_layout()
+plt.show()
+
+## Second component
+ax1 = plt.subplot2grid((4,4),(1,0), rowspan=2,colspan=2)
+plt.imshow(D_map[1,:].reshape(dim,dim))
+plt.title('MAP estimate')
+plt.axis('tight')
+
+
+ax2 = plt.subplot2grid((4,4), (1,2))
+plt.imshow(D_plots[1,:,0].reshape(dim,dim))
+plt.axis('tight')
+
+ax3 = plt.subplot2grid((4,4), (1,3))
+plt.imshow(D_plots[1,:,1].reshape(dim,dim))
+plt.axis('tight')
+
+ax4 = plt.subplot2grid((4,4), (2,2))
+plt.imshow(D_plots[1,:,2].reshape(dim,dim))
+plt.axis('tight')
+
+ax5 = plt.subplot2grid((4,4), (2,3))
+plt.imshow(D_plots[1,:,3].reshape(dim,dim))
+plt.axis('tight')
+
+plt.tight_layout()
+plt.show()

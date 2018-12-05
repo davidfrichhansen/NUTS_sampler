@@ -1,5 +1,4 @@
 import numpy as np
-from tqdm import tqdm_notebook as tqdm
 import matplotlib.pyplot as plt
 
 
@@ -170,8 +169,9 @@ class NUTS:
         logeps_bar = 0
         H_bar = 0
         gamma = 0.05
-        for m in tqdm.trange(1,M, unit_scale=True, desc="Sample"):
+        for m in range(1,M):
             if m % 100 == 0:
+                print("%d iterations completed\n" % m)
                 print("likelihood : %f" % logp)
             #print("m = %d" % m)
             # tqdm.trange is a specialised instance of range that is optimised for progess bar output
@@ -227,10 +227,10 @@ class NUTS:
                 self.eps_list[m] = epsilon
                 logeps_bar = m**(-kappa) * logeps + (1-m**(-kappa))*logeps_bar
                 if m % 100 == 0:
-                    print("epsilon = %f" % epsilon)
-                    print("H_bar = %f" % H_bar)
-            else:
-                epsilon = np.exp(logeps_bar)
+                    print("epsilon = %f\n" % epsilon)
+
+                else:
+                    epsilon = np.exp(logeps_bar)
 
             if plot_eps and m == M_adapt:
                 plt.plot(self.eps_list)

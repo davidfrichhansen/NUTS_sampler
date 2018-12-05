@@ -1,5 +1,5 @@
 import numpy as np
-from nuts_goodgrad import NUTS
+from nuts import NUTS
 import aux_funcs as fs
 from scipy.io import loadmat, savemat
 import time
@@ -12,7 +12,7 @@ if __name__ == "__main__":
     t0 = time.time()
     print("Loading data")
     # load data
-    mat = loadmat('./data/newdata.mat')
+    mat = loadmat('./data/K1_25x25x50_2hot.mat')
     X = mat['X']
     K, L = X.shape
     print("Shape of data is (%d, %d)" % (K,L))
@@ -20,8 +20,8 @@ if __name__ == "__main__":
     # setup covariances
     print("\n\nSetting up covariances")
     M = 2
-    beta_H = 2.5*4
-    beta_D = 2.5*4
+    beta_H = 2.5*8
+    beta_D = 2.5*8
 
     sigma_N = 5
     
@@ -59,6 +59,7 @@ if __name__ == "__main__":
 
     D_map,H_map,delta,eta = fs.nmf_gpp_map(X, M, MaxIter=1000, covH=cov_H, covD=cov_D_2d, linkH=fs.link_exp_to_gauss,
                                            argsH=[1,1], linkD=fs.link_exp_to_gauss, argsD=[1,1], sigma_N=sigma_N)
+
     X_re = D_map.T@H_map
     plt.subplot(1,2,1)
     plt.imshow(X_re)
@@ -76,8 +77,6 @@ if __name__ == "__main__":
     plt.plot(delta)
 
     plt.show()
-
-    #etadelta = np.concatenate((eta, delta))
     etadelta = np.concatenate((delta,eta))
 
     #etadelta = np.concatenate((eta, delta), axis=0)
@@ -87,9 +86,7 @@ if __name__ == "__main__":
     def loglik_w(etadelta):
         return loglik(etadelta, X, M, fs.link_exp_to_gauss, fs.link_exp_to_gauss, cholD, cholH, sigma_N)
 
-    # save to mat
-    #savemat('matlab_nuts_nmf_test_new_prior', {'X' : X, 'eta' : eta, 'delta' : delta, 'M' : M, 'sigma_N' : sigma_N, 'cholD' : cholD,
-    #                                 'cholH' : cholH})
+
     print("Done with additional setup after %f s!\n" % (time.time() - t0))
     init_logp, init_grad = loglik_w(etadelta)
     print("Initial loglik: %f" % init_logp)
@@ -97,20 +94,18 @@ if __name__ == "__main__":
     plt.show()
 
 
-
-    num_samples = 2500
-    #num_burnin = int(num_samples/2)
-    num_burnin = num_samples - 1000
+    out_filename = input("Please input filename for saving\n")
+    ### Sampling part
+    num_samples = 3000
+    num_burnin = num_samples - 1500
     sampler = NUTS(loglik_w, num_samples, num_burnin, etadelta, delta=0.65)
     sampler.sample()
 
-    out_filename = input("Please input filename for saving\n")
     out_path = out_filename
-
-    out_path = input("Enter filename:")
     print("\nSaving into %s" % out_path)
     np.save(out_path, sampler.samples)
     np.save(out_path + "logp_trace", sampler.logparr)
+    np.savez(out_path+'_map', D_map=D_map, H_map=H_map, cholH=cholH, cholD=cholD)
     print("Finished in %f s!" % (time.time() - t0))
 
 
