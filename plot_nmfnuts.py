@@ -5,10 +5,6 @@ from aux_funcs import link_rectgauss, link_exp_to_gauss, loglik, get_2d_exp_kern
 from scipy.spatial.distance import euclidean
 
 # dimensions
-nr_D = 1250
-nr_H = 100
-M = 2
-sigma_N = 5
 
 mat = loadmat('./data/newdata.mat')
 a = mat['a']
@@ -17,17 +13,29 @@ X = mat['X']
 print(X.shape)
 
 K, L = X.shape
+
+M = 2
+nr_D = K*M
+nr_H = L*M
+print(nr_D)
+print(nr_H)
+sigma_N = 5
+beta_D = 2.5*10
+beta_H = 2.5*10
+
 # traces
-samples = np.load('rightstart.npy')
+samples = np.load('smooth_prior.npy')
+print("Sample shape")
+print(samples.shape)
 
 dim = int(np.sqrt(len(X)))
-cov_D_2d = get_2d_exp_kernel(2.5, (dim, dim))
+cov_D_2d = get_2d_exp_kernel(beta_D, (dim, dim))
 cov_D_2d = cov_D_2d + 1e-5 * np.eye(K)
 
 cov_H = np.zeros((L, L))
 for i in range(L):
     for j in range(L):
-        cov_H[i, j] = rbf(2.5, i + 1, j + 1)
+        cov_H[i, j] = rbf(beta_H, i + 1, j + 1)
 
 cov_H = cov_H + 1e-5 * np.eye(L)
 
@@ -43,18 +51,82 @@ print("Shape delta")
 print(delta.shape)
 
 # get H with link_exp_to_gauss
-H_space_samples = np.zeros_like(eta)
-D_space_samples = np.zeros_like(delta)
-gradnorms = np.zeros(samples.shape[0])
+H_space_samples = np.zeros((M,L,samples.shape[0]))
+D_space_samples = np.zeros((M,K, samples.shape[0]))
+
 for i in range(samples.shape[0]):
-    H_space_samples[i,:] = link_exp_to_gauss(eta[i,:], pars=[1,1])[0]
-    #H_space_samples[i, :] = link_rectgauss(eta[i, :], pars=[1, 1])[0]
-    D_space_samples[i,:] = link_rectgauss(delta[i,:], pars=[1,1])[0]
-    _, grad = loglik(samples[i,:], sigma_N, X, link_rectgauss, link_exp_to_gauss, M, cholD, cholH, (1,1), (1,1))
+    H_space_samples[:,:,i] = link_exp_to_gauss((eta[i,:].reshape(M,L))@cholH.T, pars=[1,1])[0]
+    D_space_samples[:,:,i] = link_exp_to_gauss((delta[i,:].reshape(M,K))@cholD.T, pars=[1,1])[0]
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    #_, grad = loglik(samples[i,:], sigma_N, X, link_rectgauss, link_exp_to_gauss, M, cholD, cholH)
     #gradnorms[i] = np.linalg.norm(grad, 'inf')
     #gradnorms[i] = np.amax(np.abs(grad))
 
-
+"""
 plt.plot(gradnorms)
 plt.show()
 maxdist = 0
@@ -70,11 +142,11 @@ for i in range(1,samples.shape[0]):
 plt.plot(dists)
 plt.show()
 
-H_space_samples_re = H_space_samples.reshape((1500,2,50))
-D_space_samples_re = D_space_samples.reshape(1500,2,625)
-H_try = H_space_samples_re[1400,:,:]
-D_try = D_space_samples_re[1400,:,:]
-plt.plot(H_space_samples_re[1400, 1, :])
+H_space_samples_re = H_space_samples.reshape((eta.shape[0],M,nr_H // M))
+D_space_samples_re = D_space_samples.reshape(delta.shape[0],M,nr_D // M)
+H_try = H_space_samples_re[eta.shape[0] - 100,:,:]
+D_try = D_space_samples_re[eta.shape[0] - 100,:,:]
+plt.plot(H_space_samples_re[eta.shape[0] - 100, 1, :])
 plt.show()
 X_re = D_try.T@H_try
 
@@ -146,7 +218,7 @@ plt.legend(["Mean","95% Confidence Int."], loc = 2)
 plt.show()
 
 
-
+"""
 
 
 

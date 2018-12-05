@@ -1,12 +1,11 @@
 import numpy as np
-import tqdm
-
+from tqdm import tqdm_notebook as tqdm
+import matplotlib.pyplot as plt
 
 
 class NUTS:
     """
-    Implements the efficient NUTS sampler with dual averaging (algorithm 6) from Hoffman and Gelman (2011)
-    TODO: Use Numba for likelihood!
+    Implements the efficient NUTS sampler with dual averaging (algorithm 6) from Hoffman and Gelman (2014)
     """
     def __init__(self, logp, M, M_adapt, theta0, delta=0.63, debug=False, delta_max=1000.0):
         """
@@ -30,6 +29,7 @@ class NUTS:
         self.debug = debug
         self.delta_max = delta_max
         self.accepted = 0
+        self.eps_list = np.zeros(M_adapt+1)
 
         # maybe do some smart stuff, pickling, sqlite etc.
         self.samples = np.zeros((M, len(theta0)))
@@ -152,7 +152,7 @@ class NUTS:
 
             return theta_m, r_m, theta_p, r_p, theta_prime, n_prime, s_prime, alpha_prime, n_alpha, grad_p, grad_m, grad_prime
 
-    def sample(self, kappa=0.75, t0=10):
+    def sample(self, kappa=0.75, t0=10, plot_eps=True):
         """
         Run the NUTS sampling algorithm with dual averaging. Does not return samples but saves them in self.samples
         :param kappa    Parameter to be used in dual averaging
@@ -224,12 +224,20 @@ class NUTS:
                 logeps = mu - np.sqrt(m) / gamma * H_bar
                 #print(mu)
                 epsilon = np.exp(logeps)
+                self.eps_list[m] = epsilon
                 logeps_bar = m**(-kappa) * logeps + (1-m**(-kappa))*logeps_bar
                 if m % 100 == 0:
                     print("epsilon = %f" % epsilon)
                     print("H_bar = %f" % H_bar)
             else:
                 epsilon = np.exp(logeps_bar)
+
+            if plot_eps and m == M_adapt:
+                plt.plot(self.eps_list)
+                plt.title("Epsilon convergence during adaptation")
+                plt.xlabel("Iteration")
+                plt.ylabel("Epsilon")
+                plt.show()
 
             if self.debug:
                 print(epsilon)

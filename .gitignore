@@ -15,3 +15,5 @@ __pycache__/
 
 # ignore saved numpy
 *.npy
+npys/
+misc/
