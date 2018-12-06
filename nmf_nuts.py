@@ -4,12 +4,11 @@ import aux_funcs as fs
 from scipy.io import loadmat, savemat
 import time
 import matplotlib.pyplot as plt
-#np.seterr('raise')
 
 
 if __name__ == "__main__":
-    show_cov = 0
-    t0 = time.time()
+    show_cov = 0        # plot covariances
+    t0 = time.time()    # start timer
     print("Loading data")
     # load data
     mat = loadmat('./data/K1_25x25x50_2hot.mat')
@@ -23,13 +22,17 @@ if __name__ == "__main__":
     beta_H = 2.5*8
     beta_D = 2.5*8
 
+    # Variance of noise
     sigma_N = 5
-    
+
+    # size of Raman map - assumed square
     dim = int(np.sqrt(len(X)))
     print(dim)
+    # 2D Exponential kernel on D
     cov_D_2d = fs.get_2d_exp_kernel(beta_D, (dim, dim))
     cov_D_2d = cov_D_2d + 1e-5 * np.eye(K)
 
+    # regular exponential squared kernel on H
     cov_H = np.zeros((L, L))
     for i in range(L):
         for j in range(L):
@@ -39,27 +42,26 @@ if __name__ == "__main__":
     
     print("Done after %.2f s!\n\n" % (time.time() - t0))
     if show_cov:
-        print("Plotting covariance of D\n")
         plt.imshow(cov_D_2d)
         plt.show()
         plt.imshow(cov_H)
         plt.show()
 
     print("Doing additional setup")
-    loglik = fs.loglik
+    # setup likelihood
+    logprob = fs.logprob
 
     #eta = np.random.randn(M*L)
     #delta = np.random.randn(M * K)
 
-
-
-
+    # For rotation of d and h to delta and eta
     cholD = np.linalg.cholesky(cov_D_2d)
     cholH = np.linalg.cholesky(cov_H)
 
+    # compute MAP estimate for starting point
     D_map,H_map,delta,eta = fs.nmf_gpp_map(X, M, MaxIter=1000, covH=cov_H, covD=cov_D_2d, linkH=fs.link_exp_to_gauss,
                                            argsH=[1,1], linkD=fs.link_exp_to_gauss, argsD=[1,1], sigma_N=sigma_N)
-
+    # show MAP estimate
     X_re = D_map.T@H_map
     plt.subplot(1,2,1)
     plt.imshow(X_re)
@@ -69,6 +71,7 @@ if __name__ == "__main__":
     plt.axis('tight')
     plt.show()
 
+    # Starting point after rotation and link functions
     plt.subplot(2,1,1)
     plt.plot(eta)
     plt.title('Initial eta')
@@ -79,26 +82,25 @@ if __name__ == "__main__":
     plt.show()
     etadelta = np.concatenate((delta,eta))
 
-    #etadelta = np.concatenate((eta, delta), axis=0)
 
     # 'wrapper' - may be inefficient
     #### This may be wrong. Something with sign and step size determination doesn't converge!!!
-    def loglik_w(etadelta):
-        return loglik(etadelta, X, M, fs.link_exp_to_gauss, fs.link_exp_to_gauss, cholD, cholH, sigma_N)
+    def logprob_w(etadelta):
+        return logprob(etadelta, X, M, fs.link_exp_to_gauss, fs.link_exp_to_gauss, cholD, cholH, sigma_N)
 
 
     print("Done with additional setup after %f s!\n" % (time.time() - t0))
-    init_logp, init_grad = loglik_w(etadelta)
+    init_logp, init_grad = logprob_w(etadelta)
     print("Initial loglik: %f" % init_logp)
     plt.plot(init_grad)
     plt.show()
-
-
     out_filename = input("Please input filename for saving\n")
     ### Sampling part
     num_samples = 3000
     num_burnin = num_samples - 1500
-    sampler = NUTS(loglik_w, num_samples, num_burnin, etadelta, delta=0.65)
+    # setup sampler
+    sampler = NUTS(logprob_w, num_samples, num_burnin, etadelta, delta=0.65)
+    # do sampling
     sampler.sample()
 
     out_path = out_filename
@@ -107,50 +109,4 @@ if __name__ == "__main__":
     np.save(out_path + "logp_trace", sampler.logparr)
     np.savez(out_path+'_map', D_map=D_map, H_map=H_map, cholH=cholH, cholD=cholD)
     print("Finished in %f s!" % (time.time() - t0))
-
-
-    """
-    ### Starting in right solution
-    a = mat['a'].ravel()
-    vp = mat['vp'].ravel()
-    true_spec = (a.T*vp).ravel()
-    #true_spec = vp
-    H = np.zeros((M,L))
-    h0 = true_spec
-    H[0,:] = h0
-    #H[1,:] = np.random.randn(L)
-    h1 = np.random.multivariate_normal(np.zeros(L), cov_H)
-    #plt.plot(h1)
-    #plt.show()
-    H[1,:,] = fs.link_rectgauss(h1, (1,1))[0].reshape(L,)
-    #plt.plot(H[1,:])
-    #plt.show()
-
-    plt.plot(H.reshape(M*L))
-    plt.show()
-    #H[H < 0] = 1e-12
-
-    gendata = mat['gendata']
-    true_load = gendata['A'][0][0].ravel()
-    D = np.zeros((M,K))
-    D[0,:] = true_load
-
-    #D[1,:] = np.zeros((K,)) + 1e-12
-    #D[1,:] = np.random.randn(K)
-    #D[D < 0] = 1e-12
-    d1 = np.random.multivariate_normal(np.zeros(K), cov_D_2d) / sigma_N
-    #plt.plot(d1)
-    #plt.show()
-    D[1,:] = fs.link_exp_to_gauss(d1, (1,1))[0].reshape(K)
-    plt.plot(D.reshape(M*K))
-    plt.show()
-    plt.subplot(1,2,1)
-    plt.imshow(D.T@H)
-    plt.axis('tight')
-    plt.subplot(1,2,2)
-    plt.imshow(X)
-    plt.axis('tight')
-    plt.tight_layout()
-    plt.show()
-    """
 

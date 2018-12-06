@@ -10,7 +10,7 @@ from tqdm import tqdm
 #### LINK FUNCTIONS ####
 ########################
 
-
+# H -> eta
 def forward_exp_to_gauss(fh, pars):
     sigma = pars[0]
     lamb = pars[1]
@@ -19,6 +19,7 @@ def forward_exp_to_gauss(fh, pars):
     h = np.sqrt(2)*sigma*ei
     return h
 
+# H -> eta
 def forward_rectgauss(fh, pars):
     sigma = pars[0]
     s = pars[1]
@@ -28,24 +29,21 @@ def forward_rectgauss(fh, pars):
 
     return h
 
-
+# eta -> H
 def link_exp_to_gauss(h, pars):
     sigma = pars[0]
     lamb = pars[1]  # inverse scale
     # actual inverse link value
     inner = 1e-12 + .5 - .5*erf(h / (np.sqrt(2) * sigma))
-    #print(inner)
+
     val = np.maximum((-1.0 / lamb) * np.log(inner), 0)
     val = np.nan_to_num(val)
-    #print(np.sum(np.isnan(val)))
+
     # elementwise derivative of inverse link
-    #grad = (np.sqrt(2 * np.pi) * sigma * lamb) ** (-1) * np.exp(lamb * val - h ** 2 / (2 * sigma ** 2))
-    #tmp = 1e-12 + np.exp(-(h**2) / (2*sigma**2))
-    #grad = 1.0 / (sigma*lamb*np.sqrt(2*np.pi)) * (tmp /inner)
     grad = 1 / (np.sqrt(2*np.pi) * sigma * lamb) * np.exp(lamb*val - h*h / (2*sigma*sigma))
     return val, grad
 
-
+# eta -> H
 def link_rectgauss(h, pars):
     sigma = pars[0]  # diag of Sigma_h
     s = pars[1]  # "width" parameter
@@ -88,15 +86,12 @@ def calcDistanceMatrixFastEuclidean(points):
     distMat = np.sqrt(np.sum((repmat(points, numPoints, 1) - repeat(points, numPoints, axis=0))**2, axis=1))
     return distMat.reshape((numPoints,numPoints))
 
-########################
-#### Log likelihood ####
-########################
-def loglik(etadelta, X, M, linkD, linkH, cholD, cholH, sigma):
+#########################
+#### Log probability ####
+#########################
+def logprob(etadelta, X, M, linkD, linkH, cholD, cholH, sigma):
     K,L = X.shape
 
-    #eta = etadelta[:M*L]
-    #delta = etadelta[M*L:]
-    #print(delta.shape)
     delta = etadelta[:M*K]
     eta = etadelta[M*K:]
     D_args = (1,1)
