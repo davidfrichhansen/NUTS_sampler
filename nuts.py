@@ -65,7 +65,6 @@ class NUTS:
         if self.debug:
             print("Enter reasonable epsilon")
         dim = len(theta)
-       # print("Dim in eps heu %d" % dim)
         epsilon = 1
         r = np.random.randn(dim)
         # initial leapfrog
@@ -98,7 +97,7 @@ class NUTS:
         :param r0:          Initial momentum value
         :param old_logp:    self.f(theta0)
         :param grad:        gradient of self.f(theta)
-        :return:            A bunch - TODO
+        :return:            A bunch
         """
 
         delta_max = self.delta_max
@@ -155,9 +154,9 @@ class NUTS:
         Run the NUTS sampling algorithm with dual averaging. Does not return samples but saves them in self.samples
         :param kappa    Parameter to be used in dual averaging
         :param t0       Initial value of t0 as described in paper
-        :return:        Nothing
+        :param plot_eps Determines if epsilon convergence should be plotted
+        :return:        Nothing - sets self.samples directly
         """
-        #np.random.seed(0)
         f = self.logp
         M = self.M
         M_adapt = self.M_adapt
@@ -172,13 +171,13 @@ class NUTS:
             if m % 100 == 0:
                 print("%d iterations completed\n" % m)
                 print("likelihood : %f" % logp)
-            #print("m = %d" % m)
-            # tqdm.trange is a specialised instance of range that is optimised for progess bar output
-            #r0 = np.random.multivariate_normal(np.zeros_like(theta0), np.eye(len(theta0)))
+            # resample momentum
             r0 = np.random.randn(len(theta0))
+            # evaluate probability
             logp, grad = f(self.samples[m-1, :])
+            # logp(theta, r)
             joint = logp - 0.5*r0.T@r0
-            #log_u = np.log(np.random.uniform(0, np.exp(logp - 0.5*r0.T@r0)))
+            # if u ~ uniform(0, z), then log(u) ~ log(z) - exp(1), cf. Slice sampling paper by R.M. Neal
             log_u = joint - np.random.exponential(1, size=1)
             # initialize
             theta_m = self.samples[m-1,:]
@@ -194,6 +193,7 @@ class NUTS:
             while s:
                 # choose direction uniformly
                 v = np.random.choice([-1,1])
+                # Begin initial recursion
                 if v == -1:
                     (theta_m, r_m, _, _, theta_prime, n_prime,
                      s_prime, alpha, n_alpha, _, grad_m, grad_prime) = self.build_tree(theta_m, r_m, log_u, v, j, epsilon,
@@ -204,13 +204,12 @@ class NUTS:
                                                                 self.samples[m-1,:], r0, logp, grad_p)
                 if s_prime:
                     # accept sample
-                    #bern = np.random.binomial(1, min(1, n_prime / n))
                     bern = np.random.rand() < min(1, n_prime / n)
                     if bern:
-                        #print("Accept!")
                         theta_prop = theta_prime
                         grad = grad_prime
 
+                # stopping criteria
                 n += n_prime
                 s = s_prime if (theta_p - theta_m) @ r_m >= 0 and (theta_p - theta_m) @ r_p >= 0 else 0
                 j = j + 1
@@ -218,10 +217,7 @@ class NUTS:
             # dual averaging
             if m <= M_adapt:
                 H_bar = (1 - 1.0 / (m + t0))*H_bar + 1 / (m+t0) * (self.delta - alpha / n_alpha)
-                #print(alpha / n_alpha)
-                #print(H_bar)
                 logeps = mu - np.sqrt(m) / gamma * H_bar
-                #print(mu)
                 epsilon = np.exp(logeps)
                 self.eps_list[m] = epsilon
                 logeps_bar = m**(-kappa) * logeps + (1-m**(-kappa))*logeps_bar
@@ -244,7 +240,9 @@ class NUTS:
             # add proposal to sample list
             self.samples[m, :] = theta_prop
             self.logparr[m] = logp
+
         print("Epsilon was %lf" % epsilon)
+
         # remove burnin
         self.samples = self.samples[M_adapt:, :]
         print("Sampling finished!")
