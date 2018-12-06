@@ -101,7 +101,6 @@ class NUTS:
         :return:            A bunch - TODO
         """
 
-
         delta_max = self.delta_max
         # base case - tree height is 0
         if j == 0:
