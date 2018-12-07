@@ -7,11 +7,11 @@ from aux_funcs import link_rectgauss, link_exp_to_gauss, get_2d_exp_kernel, rbf
 
 
 ### LOAD DATA
-mat = loadmat('./data/K1_25x25x50_2hot.mat')
+mat = loadmat('./data/K2_25x25x50_2hot.mat')
 a = mat['a']
 vp = mat['vp']
 X = mat['X']
-loading = mat['gendata']['A'].ravel()[0].ravel()
+loading = mat['gendata']['A'].ravel()[0]
 print(X.shape)
 
 K, L = X.shape
@@ -25,8 +25,8 @@ sigma_N = 5
 
 
 ### LOAD SAMPLES
-samples = np.load('npys/K1_2hot/K1_25x25x50_2hot_un_smooth.npy')
-maps = np.load("npys/K1_2hot/K1_25x25x50_2hot_un_smooth_map.npz")
+samples = np.load('npys/K2_2hot/K2_25x25x50_2hot_M2_unsmooth.npy')
+maps = np.load("npys/K2_2hot/K2_25x25x50_2hot_M2_unsmooth_map.npz")
 D_map = maps['D_map']
 H_map = maps['H_map']
 cholH = maps['cholH']
@@ -61,7 +61,7 @@ for i in range(samples.shape[0]):
 
 ### PLOT MAP ESTIMATE AND TRUE SPECTRUM (ie. H)
 plt.subplot(2,1,1)
-plt.plot(H_map[1,:])
+plt.plot(H_map[0,:])
 plt.title('First component of H MAP')
 
 plt.subplot(2,1,2)
@@ -75,11 +75,11 @@ plt.show()
 
 ### PLOT HOTSPOT MAP AND TRUE HOTSPOT (ie. D)
 plt.subplot(1,2,1)
-plt.imshow(D_map[1,:].reshape(dim,dim))
+plt.imshow(D_map[0,:].reshape(dim,dim))
 plt.title("D MAP")
 
 plt.subplot(1,2,2)
-plt.imshow(loading.reshape(dim,dim))
+plt.imshow(loading[:,1].reshape(dim,dim))
 plt.title('True loading')
 
 plt.tight_layout()
@@ -95,7 +95,7 @@ colornames = ['g','r','c','m','k']
 plt.subplot(1,2,1)
 plt.title("Map estimate and one component")
 # plot MAP
-plt.plot(H_map[1,:], label='MAP')
+plt.plot(H_map[0,:], label='MAP')
 plt.xlabel("Index")
 plt.ylabel("Intensity")
 for i in range(4):
@@ -104,7 +104,7 @@ plt.legend()
 plt.subplot(1,2,2)
 plt.xlabel("Index")
 plt.ylabel("Intensity")
-plt.plot(H_map[0,:], label='MAP')
+plt.plot(H_map[1,:], label='MAP')
 plt.title("Map estimate and one component")
 for i in range(4):
     plt.plot(H_plots[1,:,i], c=colornames[i])
@@ -119,7 +119,7 @@ plt.show()
 D_plots = D_samples[:,:,-100::100//4]
 
 ax1 = plt.subplot2grid((4,4),(1,0), rowspan=2,colspan=2)
-plt.imshow(D_map[1,:].reshape(dim,dim))
+plt.imshow(D_map[0,:].reshape(dim,dim))
 plt.title('MAP estimate')
 plt.axis('tight')
 
@@ -145,7 +145,7 @@ plt.show()
 
 ## Second component
 ax1 = plt.subplot2grid((4,4),(1,0), rowspan=2,colspan=2)
-plt.imshow(D_map[0,:].reshape(dim,dim))
+plt.imshow(D_map[1,:].reshape(dim,dim))
 plt.title('MAP estimate')
 plt.axis('tight')
 

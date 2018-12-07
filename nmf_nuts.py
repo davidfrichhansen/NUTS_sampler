@@ -18,9 +18,9 @@ if __name__ == "__main__":
     
     # setup covariances
     print("\n\nSetting up covariances")
-    M = 3
-    beta_H = 2.5*3
-    beta_D = 2.5*3
+    M = 2
+    beta_H = 2.5*4
+    beta_D = 2.5*4
 
     # Variance of noise
     sigma_N = 5
