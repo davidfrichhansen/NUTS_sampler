@@ -1,6 +1,5 @@
 import numpy as np
 import sys
-#from nuts_badgrad import NUTS
 from nuts import NUTS
 from scipy.stats import wishart
 import matplotlib.pyplot as plt

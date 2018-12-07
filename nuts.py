@@ -163,7 +163,7 @@ class NUTS:
         theta0 = self.theta0
         logp, grad = f(theta0)
         epsilon = self.epsilon_heuristic(theta0, logp, grad)
-        mu = np.log(50*epsilon)
+        mu = np.log(10*epsilon)
         logeps_bar = 0
         H_bar = 0
         gamma = 0.05

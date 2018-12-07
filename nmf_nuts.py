@@ -11,16 +11,16 @@ if __name__ == "__main__":
     t0 = time.time()    # start timer
     print("Loading data")
     # load data
-    mat = loadmat('./data/K1_25x25x50_2hot.mat')
+    mat = loadmat('./data/K2_25x25x50_2hot.mat')
     X = mat['X']
     K, L = X.shape
     print("Shape of data is (%d, %d)" % (K,L))
     
     # setup covariances
     print("\n\nSetting up covariances")
-    M = 2
-    beta_H = 2.5*8
-    beta_D = 2.5*8
+    M = 3
+    beta_H = 2.5*3
+    beta_D = 2.5*3
 
     # Variance of noise
     sigma_N = 5
